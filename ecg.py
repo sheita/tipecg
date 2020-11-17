@@ -24,10 +24,6 @@ for i in range(len(Signal)):
     Signal[i] = Signal[i].replace(',','.')
     Signal[i] = float(Signal[i])
 
-print(Temps)
-print(Signal)
-
-
 """
 Affichage du graphe
 """
@@ -58,4 +54,34 @@ plt.rcParams["figure.facecolor"] = 'w'
 # plt.axvline(x=1, color='black', linestyle='--')
 # plt.axhline(y=1, color='black', linestyle='--')
 
+plt.show()
+
+
+"""
+Analyse de spectre
+"""
+
+import numpy as np
+import scipy.fftpack
+
+SignalNp = np.array(Signal)
+TempsNp = np.array(Temps)
+
+# Number of samplepoints
+N = 600
+# sample spacing
+T = 0.003
+x = TempsNp
+y = SignalNp
+yf = scipy.fftpack.fft(y)
+xf = np.linspace(0.0, 1.0/(2.0*T), N/2)
+
+fig, ax = plt.subplots()
+ax.stem(xf, 2.0/N * np.abs(yf[:N//2]), markerfmt=' ')
+#ax.title("Analyse de Fourier du signal ECG")
+#fig.xlabel("Fréquence (Hz)")
+#fig.ylabel("Amplitude")
+plt.show()
+plt.figure()
+plt.plot([1],[1])
 plt.show()
