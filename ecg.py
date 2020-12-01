@@ -38,7 +38,7 @@ def lireCSV(nomdufichier):
 Affichage du graphe
 """
 import matplotlib.pyplot as plt
-
+from matplotlib import tight_layout
 
 def tracerECG(Temps, Signal):
     plt.figure("Graphe ECG")
@@ -65,6 +65,7 @@ def tracerECG(Temps, Signal):
     plt.rcParams["figure.facecolor"] = 'w'
     
     plt.show()
+
 
 """
 Analyse de fourier
@@ -122,6 +123,32 @@ def lissage(Temps, Signal):
     plt.show()
 
 """
+Dérivée du signal
+"""
+
+import numpy as np
+
+def derivee(Temps, Signal):
+    plt.figure("Dérivée du signal d'ECG")
+    
+    # Ligne horizontale à y = 0
+    plt.axhline(y=0, color='black', linestyle='--')
+    
+    # Tracé de l'électrocardiogramme
+    plt.title("Dérivée du signal de l'électrocardiogramme")
+    plt.xlabel("Temps (s)")
+    plt.ylabel("Dérivée du signal (V.s-1)")
+    plt.grid()
+    plt.plot(Temps, Signal, color='silver', label='Signal (V)')
+    
+    # Centrage autour de y = 0
+    maxabs = max(Signal+[-x for x in Signal])
+    plt.ylim([-maxabs-1,maxabs+1])
+    
+    plt.plot(Temps, np.diff([0]+Signal), color='dodgerblue', label='Dérivée du signal')
+    plt.show()
+    
+"""
 Découpage du signal
 """
 
@@ -132,13 +159,14 @@ Découpage du signal
 Raccourci de configuration
 """
 
-def ecg(a,b,c):
+def ecg(a=0,b=0,c=0,d=0):
     Temps, Signal = lireCSV("enregistrements/lycée/EX8.csv")
     if a==1: tracerECG(Temps, Signal)
     if b==1: analyseFourier(Temps, Signal)
     if c==1: lissage(Temps, Signal)
+    if d==1: derivee(Temps, Signal)
 
-ecg(1,1,1)
+ecg(1,0,0,1)
 
 """
 Autres
