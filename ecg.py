@@ -32,6 +32,8 @@ def lireCSV(nomdufichier):
         Signal[i] = Signal[i].replace(',','.')
         Signal[i] = float(Signal[i])
     
+    print("Fichier lu : %s \nNombre de points : %s \nPériode d'échantillonage : %s s \nTemps d'acquisition total : %s s"%(nomdufichier,len(Signal),Temps[1]-Temps[0],Temps[-1]))
+    
     return (Temps, Signal)
 
 """
