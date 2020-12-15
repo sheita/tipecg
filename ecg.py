@@ -1,6 +1,16 @@
 # -*- coding: utf-8 -*-
 
 """
+Configuration (pas important)
+"""
+
+import matplotlib.pyplot as plt
+print("\n")
+
+# Couleur de fond de la fenêtre d'affichage du graphe en blanc
+plt.rcParams["figure.facecolor"] = 'w'
+
+"""
 Lecture du fichier CSV
 """
 
@@ -39,20 +49,25 @@ def lireCSV(nomdufichier):
 """
 Affichage du graphe
 """
+
 import matplotlib.pyplot as plt
 from matplotlib import tight_layout
+import numpy as np
 
 def tracerECG(Temps, Signal):
     plt.figure("Graphe ECG")
     
     # Ligne horizontale à y = 0
-    plt.axhline(y=0, color='black', linestyle='--')
+    # plt.axhline(y=0, color='black', linestyle='--')
+    # plt.axhline(y=sum(Signal)/len(Signal), color='black', linestyle='--')
+    plt.axhline(y=1, color='black', linestyle='--')
     
     # Tracé de l'électrocardiogramme
     plt.title("Electrocardiogramme")
     plt.xlabel("Temps (s)")
     plt.ylabel("Signal (V)")
     plt.grid()
+    
     plt.plot(Temps,Signal,'r')
     
     # Centrage autour de y = 0
@@ -63,11 +78,11 @@ def tracerECG(Temps, Signal):
     figManager = plt.get_current_fig_manager()
     figManager.window.showMaximized()
     
-    # Couleur de fond de la fenêtre d'affichage du graphe en blanc
-    plt.rcParams["figure.facecolor"] = 'w'
+    
+    for i in decoupageSignal(Temps, Signal):
+        plt.axvline(x=Temps[i], color='black', linestyle='--')
     
     plt.show()
-
 
 """
 Analyse de fourier
@@ -92,9 +107,6 @@ def analyseFourier(Temps, Signal):
     plt.xlabel("Fréquence (Hz)")
     plt.ylabel("Amplitude")
     plt.show()
-    
-    # Couleur de fond de la fenêtre d'affichage du graphe en blanc
-    plt.rcParams["figure.facecolor"] = 'w'
 
 """
 Lissage du signal
@@ -108,7 +120,7 @@ def lissage(Temps, Signal):
     f_nyq = fe / 2 # Fréquence de Nyquist
     fc = 30 # Fréquence de coupure
     
-    # Filtre de Butterworth
+    # Filtre de Butterworh
     b, a = signal.butter(4, fc/f_nyq, 'low', analog=False)
     SignalFiltre = signal.filtfilt(b, a, Signal)
     
@@ -123,6 +135,8 @@ def lissage(Temps, Signal):
     plt.ylabel("Signal (V)")
     plt.grid()
     plt.show()
+    
+    return(SignalFiltre)
 
 """
 Dérivée du signal
@@ -149,26 +163,59 @@ def derivee(Temps, Signal):
     
     plt.plot(Temps, np.diff([0]+Signal), color='dodgerblue', label='Dérivée du signal')
     plt.show()
-    
+
+# Ancienne méthode
+# print(len(list(np.where(np.diff([0]+Signal)==0)[0])))
+
 """
 Découpage du signal
 """
 
-# Affichage d'une ligne verticale au maximum d'amplitude de l'ECG
-# plt.axvline(x=Temps[Signal.index(max(Signal))], color='black', linestyle='--')
+def decoupageSignal(Temps, Signal):
+    indicesMax = []
+    conditionComplexe = 1.0
+    
+    for i in range(1,len(Signal)-2):
+        if (Signal[i]>Signal[i-1] and Signal[i]>Signal[i+1]):
+            indicesMax.append(i)
+    
+    indicesComplexes = [i for i in indicesMax if Signal[i]>conditionComplexe]
+    
+    print("\n")
+    for i in range(len(indicesComplexes)):
+        print("Complexe n°", i ,"identifié à", Signal[indicesComplexes[i]], "V au temps", Temps[indicesComplexes[i]], "s")
+        
+    return(indicesComplexes)
+
+"""
+Rythme cardiaque
+"""
+ 
+def rythmeCardiaque(Temps, Signal, indicesComplexes):
+    TempsDesMax = [Temps[i] for i in indicesComplexes]
+    Periodes = [TempsDesMax[i+1]-TempsDesMax[i] for i in range(len(TempsDesMax)-1)]
+    
+    print("\n")
+    print((1/(sum(Periodes)/len(Periodes)))*60, "battements par minute")
 
 """
 Raccourci de configuration
 """
 
-def ecg(a=0,b=0,c=0,d=0):
-    Temps, Signal = lireCSV("enregistrements/lycée/EX8.csv")
-    if a==1: tracerECG(Temps, Signal)
-    if b==1: analyseFourier(Temps, Signal)
-    if c==1: lissage(Temps, Signal)
-    if d==1: derivee(Temps, Signal)
+a=1
+b=0
+c=1
+d=1
+e=1
+f=1
 
-ecg(1,0,0,1)
+Temps, Signal = lireCSV("enregistrements/lycée/EX8.csv")
+if a==1: tracerECG(Temps, Signal)
+if b==1: analyseFourier(Temps, Signal)
+if c==1: SignalFiltre = lissage(Temps, Signal)
+if d==1: derivee(Temps, Signal)
+if e==1: indicesComplexes = decoupageSignal(Temps, SignalFiltre)
+if f==1: rythmeCardiaque(Temps, Signal, indicesComplexes)
 
 """
 Autres
