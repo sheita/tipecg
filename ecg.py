@@ -78,8 +78,8 @@ def tracerECG(Temps, Signal):
     figManager = plt.get_current_fig_manager()
     figManager.window.showMaximized()
     
-    
-    for i in decoupageSignal(Temps, Signal):
+    decoupage = decoupageSignal(Temps, Signal)
+    for i in decoupage[0]:
         plt.axvline(x=Temps[i], color='black', linestyle='--')
     
     plt.show()
@@ -136,7 +136,7 @@ def lissage(Temps, Signal):
     plt.grid()
     plt.show()
     
-    return(SignalFiltre)
+    return(list(SignalFiltre))
 
 """
 Dérivée du signal
@@ -175,6 +175,7 @@ def decoupageSignal(Temps, Signal):
     indicesMax = []
     conditionComplexe = 1.0
     
+    # Détection des complexes
     for i in range(1,len(Signal)-2):
         if (Signal[i]>Signal[i-1] and Signal[i]>Signal[i+1]):
             indicesMax.append(i)
@@ -184,8 +185,39 @@ def decoupageSignal(Temps, Signal):
     print("\n")
     for i in range(len(indicesComplexes)):
         print("Complexe n°", i ,"identifié à", Signal[indicesComplexes[i]], "V au temps", Temps[indicesComplexes[i]], "s")
+    
+    # Découpage des motifs
+    Motifs = [] # Format : Temps du 1er complexe, Temps du 2e complexe, Onde T, Onde P
+    
+    for i in range(len(indicesComplexes)-1): # 4 complexes détectés donnent 3 motifs complets entre ces complexes
+        Motifs.append([Temps[indicesComplexes[i]], Temps[indicesComplexes[i+1]]])
+    
+    # Détections des ondes T et P
+    for motif in Motifs:
+        # Onde T
+        quinzePourcent = motif[0]+0.15*(motif[1]-motif[0])
+        trentePourcent = motif[0]+0.30*(motif[1]-motif[0])
         
-    return(indicesComplexes)
+        ondeT = quinzePourcent
+        for i in indicesMax:
+            if Temps[i] > quinzePourcent and Temps[i] <= trentePourcent and Temps[i] > ondeT:
+                ondeT = Temps[i]
+        motif.append(ondeT)
+        print("Onde T identifiée au temps",ondeT,"s")
+        
+        # Onde P
+        soixanteDixPourcent = motif[0]+0.70*motif[2]
+        quatreVingtCinqPourcent = motif[0]+0.85*motif[2]
+        
+        ondeP = soixanteDixPourcent
+        for i in indicesMax:
+            if Temps[i] > soixanteDixPourcent and Temps[i] <= quatreVingtCinqPourcent and Temps[i] > ondeP:
+                ondeP = Temps[i]
+        motif.append(ondeP)
+        print("Onde P identifiée au temps", ondeP, "s")
+    
+    print(Motifs)
+    return(indicesComplexes, Motifs)
 
 """
 Rythme cardiaque
@@ -196,6 +228,7 @@ def rythmeCardiaque(Temps, Signal, indicesComplexes):
     Periodes = [TempsDesMax[i+1]-TempsDesMax[i] for i in range(len(TempsDesMax)-1)]
     
     print("\n")
+    print(TempsDesMax)
     print((1/(sum(Periodes)/len(Periodes)))*60, "battements par minute")
 
 """
@@ -203,7 +236,7 @@ Raccourci de configuration
 """
 
 a=1
-b=0
+b=1
 c=1
 d=1
 e=1
@@ -214,7 +247,7 @@ if a==1: tracerECG(Temps, Signal)
 if b==1: analyseFourier(Temps, Signal)
 if c==1: SignalFiltre = lissage(Temps, Signal)
 if d==1: derivee(Temps, Signal)
-if e==1: indicesComplexes = decoupageSignal(Temps, SignalFiltre)
+if e==1: indicesComplexes = decoupageSignal(Temps, SignalFiltre)[0]
 if f==1: rythmeCardiaque(Temps, Signal, indicesComplexes)
 
 """
