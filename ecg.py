@@ -11,6 +11,32 @@ print("\n")
 plt.rcParams["figure.facecolor"] = 'w'
 
 """
+Enregistrements
+
+Nom du fichier : Enregistrements[i][0]
+Temps : Enregistrements[i][1]
+Signal : Enregistrements[i][2]
+Motifs : Enregistrements[i][3]
+SignalFiltre : Enregistrements[i][4]
+"""
+Enregistrements = []
+
+def data():
+    print("La liste Enregistrements contient", len(Enregistrements), "enregistrement(s).")
+    print("Le programme travaille actuellement avec l'enregistrement n°"+str(iECG)+".")
+    
+    for i in range(len(Enregistrements)):
+        Temps = Enregistrements[i][1]
+        Signal = Enregistrements[i][2]
+        print("")
+        print("• Enregistrement n°"+str(i))
+        print("""Fichier lu : "%s" """%(Enregistrements[i][0]))
+        print("Nombre de points :", len(Signal))
+        print("Période d'échantillonage :", Temps[1]-Temps[0])
+        print("Temps d'acquisition total :", Temps[-1], "s")
+        print("Rythme cardiaque :")
+
+"""
 Lecture du fichier CSV
 """
 
@@ -44,7 +70,7 @@ def lireCSV(nomdufichier):
     
     print("Fichier lu : %s \nNombre de points : %s \nPériode d'échantillonage : %s s \nTemps d'acquisition total : %s s"%(nomdufichier,len(Signal),Temps[1]-Temps[0],Temps[-1]))
     
-    return (Temps, Signal)
+    Enregistrements.append([nomdufichier, Temps, Signal, 0, 0])
 
 """
 Affichage du graphe
@@ -54,7 +80,10 @@ import matplotlib.pyplot as plt
 from matplotlib import tight_layout
 import numpy as np
 
-def tracerECG(Temps, Signal):
+def tracerECG(i):
+    Temps = Enregistrements[iECG][1]
+    Signal = Enregistrements[iECG][2]
+    
     plt.figure("Graphe ECG")
     
     # Ligne horizontale à y = 0
@@ -78,9 +107,9 @@ def tracerECG(Temps, Signal):
     figManager = plt.get_current_fig_manager()
     figManager.window.showMaximized()
     
-    decoupage = decoupageSignal(Temps, Signal)
-    for i in decoupage[0]:
-        plt.axvline(x=Temps[i], color='black', linestyle='--')
+#    decoupage = decoupageSignal(i)
+#    for i in decoupage[0]:
+#        plt.axvline(x=Temps[i], color='black', linestyle='--')
     
     plt.show()
 
@@ -91,7 +120,10 @@ Analyse de fourier
 import numpy as np
 import scipy.fftpack
 
-def analyseFourier(Temps, Signal):
+def analyseFourier(i):
+    Temps = Enregistrements[iECG][1]
+    Signal = Enregistrements[iECG][2]
+    
     plt.figure("Analyse de Fourier")
 
     # L'analyse de Fourier utilise des tableaux numpy
@@ -114,7 +146,9 @@ Lissage du signal
 
 from scipy import signal
 
-def lissage(Temps, Signal):
+def lissage(iECG):
+    Temps = Enregistrements[iECG][1]
+    Signal = Enregistrements[iECG][2]
     
     fe = 1/0.003 # Fréquence d'échantillonnage
     f_nyq = fe / 2 # Fréquence de Nyquist
@@ -136,7 +170,7 @@ def lissage(Temps, Signal):
     plt.grid()
     plt.show()
     
-    return(list(SignalFiltre))
+    Enregistrements[iECG][4] = list(SignalFiltre)
 
 """
 Dérivée du signal
@@ -144,7 +178,10 @@ Dérivée du signal
 
 import numpy as np
 
-def derivee(Temps, Signal):
+def derivee(iECG):
+    Temps = Enregistrements[iECG][1]
+    Signal = Enregistrements[iECG][2]
+    
     plt.figure("Dérivée du signal d'ECG")
     
     # Ligne horizontale à y = 0
@@ -169,9 +206,17 @@ def derivee(Temps, Signal):
 
 """
 Découpage du signal
+
+Motifs[0] : indicesMax
+Motifs[1] : conditionComplexe
+Motifs[2] : indicesComplexes
+Motifs[3] : 
 """
 
-def decoupageSignal(Temps, Signal):
+def detectionMotifs(iECG):
+    Temps = Enregistrements[iECG][1]
+    Signal = Enregistrements[iECG][2]
+    
     indicesMax = []
     conditionComplexe = 1.0
     
@@ -185,7 +230,8 @@ def decoupageSignal(Temps, Signal):
     print("\n")
     for i in range(len(indicesComplexes)):
         print("Complexe n°", i ,"identifié à", Signal[indicesComplexes[i]], "V au temps", Temps[indicesComplexes[i]], "s")
-    
+        
+        
     # Découpage des motifs
     Motifs = [] # Format : Temps du 1er complexe, Temps du 2e complexe, Onde T, Onde P
     
@@ -217,38 +263,48 @@ def decoupageSignal(Temps, Signal):
         print("Onde P identifiée au temps", ondeP, "s")
     
     print(Motifs)
+        
+    Enregistrements[iECG][3] = Motifs
+    
     return(indicesComplexes, Motifs)
 
 """
 Rythme cardiaque
 """
  
-def rythmeCardiaque(Temps, Signal, indicesComplexes):
-    TempsDesMax = [Temps[i] for i in indicesComplexes]
-    Periodes = [TempsDesMax[i+1]-TempsDesMax[i] for i in range(len(TempsDesMax)-1)]
-    
-    print("\n")
-    print(TempsDesMax)
-    print((1/(sum(Periodes)/len(Periodes)))*60, "battements par minute")
+#def rythmeCardiaque(iECG, indicesComplexes):
+#    Temps = Enregistrements[iECG][1]
+#    Signal = Enregistrements[iECG][2]
+#    
+#    TempsDesMax = [Temps[i] for i in indicesComplexes]
+#    Periodes = [TempsDesMax[i+1]-TempsDesMax[i] for i in range(len(TempsDesMax)-1)]
+#    
+#    print("\n")
+#    print(TempsDesMax)
+#    print((1/(sum(Periodes)/len(Periodes)))*60, "battements par minute")
 
 """
 Raccourci de configuration
 """
 
+iECG = 0
+
 a=1
 b=1
 c=1
 d=1
-e=1
-f=1
+e=0
+f=0
 
-Temps, Signal = lireCSV("enregistrements/lycée/EX8.csv")
-if a==1: tracerECG(Temps, Signal)
-if b==1: analyseFourier(Temps, Signal)
-if c==1: SignalFiltre = lissage(Temps, Signal)
-if d==1: derivee(Temps, Signal)
-if e==1: indicesComplexes = decoupageSignal(Temps, SignalFiltre)[0]
-if f==1: rythmeCardiaque(Temps, Signal, indicesComplexes)
+lireCSV("enregistrements/lycée/EX8.csv")
+if a==1: tracerECG(iECG)
+if b==1: analyseFourier(iECG)
+if c==1: lissage(iECG)
+if d==1: derivee(iECG)
+detectionMotifs(iECG)
+
+#if e==1: indicesComplexes = decoupageSignal(iECG)[0]
+#if f==1: rythmeCardiaque(iECG, indicesComplexes)
 
 """
 Autres
