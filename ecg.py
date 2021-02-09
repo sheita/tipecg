@@ -1,16 +1,6 @@
 # -*- coding: utf-8 -*-
 
 """
-Configuration (pas important)
-"""
-
-import matplotlib.pyplot as plt
-print("\n")
-
-# Couleur de fond de la fenêtre d'affichage du graphe en blanc
-plt.rcParams["figure.facecolor"] = 'w'
-
-"""
 Enregistrements
 
 Nom du fichier : Enregistrements[i][0]
@@ -30,89 +20,41 @@ def data():
     for i in range(len(Enregistrements)):
         Temps = Enregistrements[i][1]
         Signal = Enregistrements[i][2]
-        print("")
+        print()
         print("• Enregistrement n°"+str(i))
         print("""Fichier lu : "%s" """%(Enregistrements[i][0]))
         print("Nombre de points :", len(Signal))
         print("Période d'échantillonage :", Temps[1]-Temps[0])
         print("Temps d'acquisition total :", Temps[-1], "s")
-        print("Rythme cardiaque :", round(rythmeCardiaque(iECG),2), "bpm")
+        print("Rythme cardiaque :", round(rythmeCardiaque(i),2), "bpm")
 
 
 """
-Lecture du fichier CSV
+Lecture de fichier TXT
 """
 
-import csv
+import json
 
-def lireCSV(nomdufichier):
+def lireTXT(cheminVersFichier):
     Temps, Signal = [], []
     
-    """
-    Le fichier CSV exportés de Latis Pro sont de la forme :
-    Temps;EX8
-    0;-0,132368206279352
-    0,003;-0,221940886462107
-    0,006;-0,147296986309811 (...)
-    """
+    with open(cheminVersFichier, 'r') as fichier:
+        next(fichier)
+        next(fichier)
+        
+        # Solution temporaire en attendant de reconstruire les fichiers avec json.loads()
+        Infos = fichier.readline()
+        Infos = Infos[1:-1].split(", ")
+        Infos[1],Infos[3]=float(Infos[1]),int(Infos[3])
+        
+        for ligne in fichier:
+            Signal.append(float(ligne))
     
-    fichier = csv.reader(open(nomdufichier), delimiter=";")
-    for ligne in fichier:
-        Temps.append(ligne[0])
-        Signal.append(ligne[1])
+    Temps = [Infos[1]*x for x in range(len(Signal))]
     
-    Temps.pop(0) # On enlève le titre de la colonne
-    for i in range(len(Temps)):
-        Temps[i] = Temps[i].replace(',','.')
-        Temps[i] = float(Temps[i])
+    print("\nFichier lu : %s \nNombre de points : %s \nPériode d'échantillonage : %s s \nTemps d'acquisition total : %s s"%(cheminVersFichier,len(Signal),Temps[1]-Temps[0],Temps[-1]))
+    Enregistrements.append([cheminVersFichier, Temps, Signal, None, None, None])
     
-    Signal.pop(0) # On enlève le titre de la colonne
-    for i in range(len(Signal)):
-        Signal[i] = Signal[i].replace(',','.')
-        Signal[i] = float(Signal[i])
-    
-    print("Fichier lu : %s \nNombre de points : %s \nPériode d'échantillonage : %s s \nTemps d'acquisition total : %s s"%(nomdufichier,len(Signal),Temps[1]-Temps[0],Temps[-1]))
-    
-    conditionComplexe = 1.0
-    Parametres = [conditionComplexe, None, None]
-    
-    # Nom, Temps, Signal, SignalFiltre, Parametres, Motifs
-    Enregistrements.append([nomdufichier, Temps, Signal, None, Parametres, None])
-
-
-"""
-Lissage du signal
-"""
-
-from scipy import signal
-
-def lissage(iECG):
-    Temps = Enregistrements[iECG][1]
-    Signal = Enregistrements[iECG][2]
-    
-    fe = 1/0.003 # Fréquence d'échantillonnage
-    f_nyq = fe / 2 # Fréquence de Nyquist
-    fc = 30 # Fréquence de coupure
-    
-    # Filtre de Butterworh
-    b, a = signal.butter(4, fc/f_nyq, 'low', analog=False)
-    SignalFiltre = signal.filtfilt(b, a, Signal)
-    
-    # Tracé de l'électrocardiogramme lissé
-    plt.figure("ECG lissé")
-    
-    plt.title("Electrocardiogramme lissé")
-    plt.plot(Temps, Signal, color='silver', label="Signal")
-    plt.plot(Temps, SignalFiltre, color='red', label='Signal filtré')
-    plt.legend()
-    plt.xlabel("Temps (s)")
-    plt.ylabel("Signal (V)")
-    plt.grid()
-    plt.show()
-    
-    Enregistrements[iECG][3] = list(SignalFiltre)    
-
-
 """
 Détection des motifs
 
@@ -125,7 +67,15 @@ Temps de l'onde P : Motifs[i][3]
 def detectionMotifs(iECG):
     Temps = Enregistrements[iECG][1]
     Signal = Enregistrements[iECG][2]
-    conditionComplexe = Enregistrements[iECG][4][0]
+    SignalFiltre = Enregistrements[iECG][3]
+    Signal = list(SignalFiltre)
+    
+    print()
+    
+    # Détermination de la condition complexe
+    SignalMax = max(Signal)
+    conditionComplexe = 0.7*SignalMax
+    print("La condition complexe choisie est à", conditionComplexe, "V.")
 
     # Détection de l'ensemble des maximums locaux
     indicesMax = []
@@ -137,7 +87,6 @@ def detectionMotifs(iECG):
     # Détection des complexes parmi les maximums locaux
     indicesComplexes = [i for i in indicesMax if Signal[i]>conditionComplexe]
     
-    print("\n")
     for i in range(len(indicesComplexes)):
         print("Complexe n°", i ,"identifié à", Signal[indicesComplexes[i]], "V au temps", Temps[indicesComplexes[i]], "s")
         
@@ -171,10 +120,31 @@ def detectionMotifs(iECG):
                 ondeP = Temps[i]
         motif.append(ondeP)
         print("Onde P identifiée au temps", ondeP, "s")
-        
-    Enregistrements[iECG][4][1] = indicesMax
-    Enregistrements[iECG][4][2] = indicesComplexes
+    
+    Enregistrements[iECG][4] = [conditionComplexe, indicesMax, indicesComplexes]
     Enregistrements[iECG][5] = Motifs
+
+
+"""
+Lissage du signal
+"""
+
+from scipy import signal
+
+def lissage(iECG):
+    Temps = Enregistrements[iECG][1]
+    Signal = Enregistrements[iECG][2]
+    PeriodeEchantillonnage = 0.003
+    
+    fe = 1/PeriodeEchantillonnage # Fréquence d'échantillonnage
+    f_nyq = fe / 2 # Fréquence de Nyquist
+    fc = 30 # Fréquence de coupure
+    
+    # Filtre de Butterworh
+    b, a = signal.butter(4, fc/f_nyq, 'low', analog=False)
+    SignalFiltre = signal.filtfilt(b, a, Signal)
+    
+    Enregistrements[iECG][3] = list(SignalFiltre)    
 
 
 """
@@ -185,25 +155,30 @@ import matplotlib.pyplot as plt
 from matplotlib import tight_layout
 import numpy as np
 
-def tracerECG(i):
+def tracerECG(iECG):
     Temps = Enregistrements[iECG][1]
     Signal = Enregistrements[iECG][2]
+    SignalFiltre = Enregistrements[iECG][3]
     indicesComplexes = Enregistrements[iECG][4][2]
+    conditionComplexe = Enregistrements[iECG][4][0]
     
-    plt.figure("Graphe ECG")
+    plt.figure("Graphe de l'ECG n°"+str(iECG))
+    
+    # Couleur de fond de la fenêtre d'affichage du graphe en blanc
+    plt.rcParams["figure.facecolor"] = 'w'
     
     # Ligne horizontale à y = 0
     # plt.axhline(y=0, color='black', linestyle='--')
     # plt.axhline(y=sum(Signal)/len(Signal), color='black', linestyle='--')
-    plt.axhline(y=1, color='black', linestyle='--')
+    plt.axhline(y=conditionComplexe, color='black', linestyle='--')
     
     # Tracé de l'électrocardiogramme
     plt.title("Electrocardiogramme")
-    plt.xlabel("Temps (s)")
-    plt.ylabel("Signal (V)")
+    plt.plot(Temps, Signal, color='silver', label="Signal (V)")
+    plt.plot(Temps, SignalFiltre, color='red', label='Signal filtré (V)')
     plt.grid()
-    
-    plt.plot(Temps,Signal,'r')
+    plt.legend()
+    plt.show()
     
     # Centrage autour de y = 0
     maxabs = max(Signal+[-x for x in Signal])
@@ -213,10 +188,7 @@ def tracerECG(i):
     figManager = plt.get_current_fig_manager()
     figManager.window.showMaximized()
     
-#    decoupage = decoupageSignal(i)
-#    for i in decoupage[0]:
-#        plt.axvline(x=Temps[i], color='black', linestyle='--')
-
+    # Affichage des lignes horizontales aux abscisses des complexes
     for i in indicesComplexes:
         plt.axvline(x=Temps[i], color='black', linestyle='--')
     
@@ -290,29 +262,29 @@ def rythmeCardiaque(iECG):
     Signal = Enregistrements[iECG][2]
     indicesComplexes = Enregistrements[iECG][4][2]
     
+    if indicesComplexes==None:
+        return(0)
+    
     TempsDesMax = [Temps[i] for i in indicesComplexes]
     Periodes = [TempsDesMax[i+1]-TempsDesMax[i] for i in range(len(TempsDesMax)-1)]
     
     return((1/(sum(Periodes)/len(Periodes)))*60)
-
-
+        
 """
-Raccourci de configuration
+Configuration du programme
 """
+lireTXT("enregistrements/lycée/EX8.txt")
+lireTXT("enregistrements/ecg-id-database/01-Paul-1.txt")
 
-iECG = 0
+Analyser = [0,1]
+Afficher = [0,1]
 
-a=1
-b=1
-c=1
+for iECG in Analyser:
+    lissage(iECG)
+    detectionMotifs(iECG)
 
-lireCSV("enregistrements/lycée/EX8.csv")
-detectionMotifs(iECG)
-lissage(iECG)
-if a==1: tracerECG(iECG)
-if b==1: analyseFourier(iECG)
-if c==1: derivee(iECG)
-
+for iECG in Afficher:
+    tracerECG(0)
 
 """
 Autres
