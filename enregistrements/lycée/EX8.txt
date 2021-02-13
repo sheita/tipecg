@@ -1,6 +1,6 @@
 # TIPE ECG 2021 - Enregistrements réalisés au lycée
-# [Numéro de la personne, Période d'échantillonnage, Prénom, Age, Sexe, Date de l'enregistrement]
-["00", 0.003, "Clément", 20, "H", "13.10.2020"]
+# [N° de la personne, N° de l'enregistrement, Période d'échantillonnage, Prénom, Age, Sexe, Date de l'enregistrement]
+[0, 1, 0.003, "Clément", 20, "H", "13.10.2020"]
 -0.132368206279352
 -0.221940886462107
 -0.147296986309811
