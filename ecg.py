@@ -72,27 +72,36 @@ def detectionMotifs(iECG):
     Meta = Enregistrements[iECG][0]
     Signaux = Enregistrements[iECG][1]
     
-    Signal = Signaux[1] # On choisit le signal filtré
+    Signal = Signaux[1]
+    if Signal == None : Signal = Signaux[0]
+    
     PeriodeEchantillonnage = Meta[3]
     Temps = [n*PeriodeEchantillonnage for n in range(len(Signal))]
     
     print()
-    
-    # Détermination de la condition complexe
-    SignalMax = max(Signal)
-    conditionComplexe = round(0.7*SignalMax,2)
-    print("[ECG n°"+str(iECG)+"] La condition complexe choisie est", conditionComplexe, "V")
-
     # Détection de l'ensemble des maximums locaux
     indicesMax = []
     
     for i in range(1,len(Signal)-2):
         if (Signal[i]>Signal[i-1] and Signal[i]>Signal[i+1]):
             indicesMax.append(i)
-    
-    # Détection des complexes parmi les maximums locaux
+   
+    # Méthode de la condition complexe
+    SignalMax = max(Signal)
+    conditionComplexe = round(0.7*SignalMax,2)
     indicesComplexes = [i for i in indicesMax if Signal[i]>conditionComplexe]
-        
+    print("[ECG n°"+str(iECG)+"] La condition complexe choisie est", conditionComplexe, "V")
+    
+#    # Méthode de la dérivée seconde
+#    SignalDerive2nde = derivee(iECG, n=1, tracerDerivee=False)
+#    SignalDerive2ndeMin = min(SignalDerive2nde)
+#    indicesMin = []
+#    
+#    for i in range(1,len(SignalDerive2nde)-2):
+#        if (SignalDerive2nde[i]<SignalDerive2nde[i-1] and SignalDerive2nde[i]<SignalDerive2nde[i+1]):
+#            indicesMin.append(i)
+#    
+#    indicesComplexes = [i for i in indicesMin if SignalDerive2nde[i]<SignalDerive2ndeMin/2]
         
     # Découpage des motifs
     Motifs = [] # Format : 
@@ -106,11 +115,9 @@ def detectionMotifs(iECG):
         quinzePourcent = motif[0]+0.15*(motif[1]-motif[0])
         trentePourcent = motif[0]+0.30*(motif[1]-motif[0])
         
-        tempsOndeT = quinzePourcent
         indiceOndeT = indicesMax[0]
         for i in indicesMax:
             if Temps[i] > quinzePourcent and Temps[i] <= trentePourcent and Temps[i] > Temps[indiceOndeT]:
-                tempsOndeT = Temps[i]
                 indiceOndeT = i
         motif.append([indiceOndeT, quinzePourcent, trentePourcent])
         
@@ -118,16 +125,13 @@ def detectionMotifs(iECG):
         soixanteDixPourcent = motif[0]+0.70*(motif[1]-motif[0])
         quatreVingtCinqPourcent = motif[0]+0.85*(motif[1]-motif[0])
         
-        tempsOndeP = soixanteDixPourcent
         indiceOndeP = indicesMax[0]
         for i in indicesMax:
             if Temps[i] > soixanteDixPourcent and Temps[i] <= quatreVingtCinqPourcent and Temps[i] > Temps[indiceOndeP]:
-                tempsOndeP = Temps[i]
                 indiceOndeP = i
         motif.append([indiceOndeP, soixanteDixPourcent, quatreVingtCinqPourcent])
     
     print("[ECG n°"+str(iECG)+"]", len(indicesComplexes), "complexes identifiés, soit", len(Motifs), "motifs")
-    
     
     Enregistrements[iECG][2] = [conditionComplexe, indicesMax, indicesComplexes]
     Enregistrements[iECG][3] = Motifs
@@ -143,7 +147,6 @@ def lissage(iECG):
     Signaux = Enregistrements[iECG][1]
     Signal = Signaux[0]
     PeriodeEchantillonnage = Enregistrements[iECG][0][3]
-    Temps = [n*PeriodeEchantillonnage for n in range(len(Signal))]
     
     fe = 1/PeriodeEchantillonnage # Fréquence d'"chantillonnage
     f_nyq = fe / 2 # Fréquence de Nyquist
@@ -160,9 +163,9 @@ def lissage(iECG):
 [Affichage du graphe]
 """
 
-import matplotlib.pyplot as plt
-from matplotlib import tight_layout
 import numpy as np
+import matplotlib.pyplot as plt
+#from matplotlib import tight_layout
 
 def tracerECG(iECG):
     Signaux = Enregistrements[iECG][1]
@@ -170,27 +173,50 @@ def tracerECG(iECG):
     Motifs = Enregistrements[iECG][3]
     Signal = Signaux[0]
     SignalFiltre = Signaux[1]
-    indicesComplexes = ParametresAnalyse[2]
-    conditionComplexe = ParametresAnalyse[0]
     
     PeriodeEchantillonnage = Enregistrements[iECG][0][3]
     Temps = [n*PeriodeEchantillonnage for n in range(len(Signal))]
     
     plt.figure("Graphe de l'ECG n°"+str(iECG))
+    plt.title("Electrocardiogramme de l'enregistrement n°"+str(iECG))
     
     # Couleur de fond de la fenêtre d'affichage du graphe en blanc
     plt.rcParams["figure.facecolor"] = 'w'
     
-    # Ligne horizontale à y = 0
+    # Axes en x et y
     plt.axhline(y=0, color='black', linestyle='-')
     plt.axvline(x=0, color='black', linestyle='-')
-    plt.axhline(y=conditionComplexe, color='cornflowerblue', linestyle='-')
+    
+    estFiltré = SignalFiltre != None
+    estAnalysé = Motifs != None
     
     # Tracé de l'électrocardiogramme
-    plt.title("Electrocardiogramme de l'enregistrement n°"+str(iECG))
-    plt.plot(Temps, Signal, color='silver', label="Signal (V)")
-    plt.plot(Temps, SignalFiltre, color='red', label='Signal filtré (V)')
-    #plt.grid()
+    if estAnalysé:
+        conditionComplexe = ParametresAnalyse[0]
+        plt.axhline(y=conditionComplexe, color='cornflowerblue', linestyle='-')
+        plt.plot(Temps, Signal, color='silver', label="Signal (V)")
+        plt.plot(Temps, SignalFiltre, color='red', label='Signal filtré (V)')
+        for i in range(len(Motifs)):
+            motif = Motifs[i]
+            if i%2==0:
+                plt.axvspan(motif[0], motif[1], facecolor='darkgrey', alpha=0.12)
+            else:
+                plt.axvspan(motif[0], motif[1], facecolor='darkgrey', alpha=0.02)
+            
+            plt.axvspan(motif[2][1], motif[2][2], facecolor='darkorange', alpha=0.2)
+            plt.axvspan(motif[3][1], motif[3][2], facecolor='darkorange', alpha=0.2)
+            plt.axvline(x=Temps[motif[2][0]], color='orange', linestyle='-')
+            plt.axvline(x=Temps[motif[3][0]], color='orange', linestyle='-')
+    
+    elif estFiltré:
+        plt.plot(Temps, Signal, color='silver', label="Signal (V)")
+        plt.plot(Temps, SignalFiltre, color='red', label='Signal filtré (V)')
+            
+    else:
+        Signal = Signaux[0]
+        plt.plot(Temps, Signal, color='red', label="Signal (V)")
+    
+    # plt.grid()
     plt.legend()
     
     # Centrage autour de y = 0
@@ -200,22 +226,6 @@ def tracerECG(iECG):
     # Affichage du graphe en plein écran directement
     figManager = plt.get_current_fig_manager()
     figManager.window.showMaximized()
-    
-    # Affichage des lignes horizontales aux abscisses des complexes
-    #for i in indicesComplexes:
-    #    plt.axvline(x=Temps[i], color='lightcoral', linestyle='--')
-    
-    for i in range(len(Motifs)):
-        motif = Motifs[i]
-        if i%2==0:
-            plt.axvspan(motif[0], motif[1], facecolor='darkgrey', alpha=0.2)
-        else:
-            plt.axvspan(motif[0], motif[1], facecolor='darkgrey', alpha=0.1)
-        
-        plt.axvspan(motif[2][1], motif[2][2], facecolor='darkorange', alpha=0.2)
-        plt.axvspan(motif[3][1], motif[3][2], facecolor='darkorange', alpha=0.2)
-        plt.axvline(x=Temps[motif[2][0]], color='orange', linestyle='-')
-        plt.axvline(x=Temps[motif[3][0]], color='orange', linestyle='-')
     
     plt.show()
 
@@ -256,61 +266,67 @@ def analyseFourier(iECG):
 
 import numpy as np
 
-def derivee(iECG, n=1):
-    Signal = Enregistrements[iECG][1][1]
+def derivee(iECG, n=1, tracerDerivee=True):
+    Signaux = Enregistrements[iECG][1]
+    Signal = Signaux[1]
+    if Signal == None : Signal = Signaux[0]
     PeriodeEchantillonnage = Enregistrements[iECG][0][3]
     Temps = [n*PeriodeEchantillonnage for n in range(len(Signal))]
     
-    SignalDerive = np.diff([0]+Signal)
+    SignalDerive = list(np.diff([0]+Signal, n))
+    TempsDerive = [n*PeriodeEchantillonnage for n in range(len(SignalDerive))]
     
-    plt.figure("Dérivée du signal d'ECG")
-    
-    # Ligne horizontale à  y = 0
-    plt.axhline(y=0, color='black', linestyle='--')
-    
-    # Tracé de l'électrocardiogramme
-    plt.title("Dérivée du signal de l'électrocardiogramme")
-    plt.xlabel("Temps (s)")
-    #plt.grid()
-    plt.plot(Temps, Signal, color='silver', label='Signal (V)')
-    
-    # Centrage autour de y = 0
-    maxabs = max(Signal+[-x for x in Signal])
-    plt.ylim([-maxabs-1,maxabs+1])
-    
-    plt.plot(Temps, SignalDerive, color='dodgerblue', label='Dérivée du signal (V.s-1)')
-    
-    plt.show()
-
+    if tracerDerivee:
+        plt.figure("Dérivée du signal d'ECG")
+        
+        # Ligne horizontale à  y = 0
+        plt.axhline(y=0, color='black', linestyle='--')
+        
+        # Tracé de l'électrocardiogramme
+        plt.title("Dérivée du signal de l'électrocardiogramme")
+        plt.xlabel("Temps (s)")
+        #plt.grid()
+        plt.plot(Temps, Signal, color='silver', label='Signal (V)')
+        
+        # Centrage autour de y = 0
+        maxabs = max(Signal+[-x for x in Signal])
+        plt.ylim([-maxabs-1,maxabs+1])
+        
+        plt.plot(TempsDerive, SignalDerive, color='dodgerblue', label='Dérivée '+str(n)+['ère','nde','ème'][min([n-1,2])]+' du signal')
+        plt.legend()
+        
+        plt.axhline(y=min(SignalDerive)/2, color='green', linestyle='-')
+        
+        plt.show()
+        
+        #print("Min signal dérivé", TempsDerive[SignalDerive.index(min(SignalDerive))])
+    else:
+        return(SignalDerive)
 
 """
 [Rythme cardiaque]
 """
  
 def rythmeCardiaque(iECG):
-    Signaux = Enregistrements[iECG][1]
-    Signal = Signaux[0]
-    PeriodeEchantillonnage = Enregistrements[iECG][0][3]
-    Temps = [n*PeriodeEchantillonnage for n in range(len(Signal))]
     Motifs = Enregistrements[iECG][3]
     
     tempsPremierComplexe = Motifs[0][0]
     tempsDernierComplexe = Motifs[-1][1]
-    bps = (tempsDernierComplexe-tempsPremierComplexe)/len(Motifs)
-    bpm = bps*60
+    battementsParSeconde = (tempsDernierComplexe-tempsPremierComplexe)/len(Motifs)
+    battementsParMinute = battementsParSeconde*60
     
-    return(bpm)
+    return(battementsParMinute)
         
 """
 [Configuration du programme]
 """
 lireTXT("enregistrements/lycée/EX8.txt")
-for i in [112]:
+for i in [1]:
     lireTXT("enregistrements/ecg-id-database/"+str(i)+".txt")
 
-Lisser = [0,1]
-Analyser = [0,1]
-Afficher = []
+Lisser = [0]
+Analyser = [0]
+Afficher = [0]
 
 for iECG in Lisser: lissage(iECG)
 for iECG in Analyser: detectionMotifs(iECG)
