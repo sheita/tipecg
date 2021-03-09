@@ -91,20 +91,20 @@ def detectionMotifs(iECG):
     conditionComplexe = round(0.7*SignalMax,2)
     indicesComplexes = [i for i in indicesMax if Signal[i]>conditionComplexe]
     print("[ECG n°"+str(iECG)+"] La condition complexe choisie est", conditionComplexe, "V")
+
+    # Méthode de la dérivée seconde
+    SignalDerive2nde = derivee(iECG, n=2, tracerDerivee=False)
+    SignalDerive2ndeMin = min(SignalDerive2nde)
+    indicesMin = []
     
-#    # Méthode de la dérivée seconde
-#    SignalDerive2nde = derivee(iECG, n=1, tracerDerivee=False)
-#    SignalDerive2ndeMin = min(SignalDerive2nde)
-#    indicesMin = []
-#    
-#    for i in range(1,len(SignalDerive2nde)-2):
-#        if (SignalDerive2nde[i]<SignalDerive2nde[i-1] and SignalDerive2nde[i]<SignalDerive2nde[i+1]):
-#            indicesMin.append(i)
-#    
-#    indicesComplexes = [i for i in indicesMin if SignalDerive2nde[i]<SignalDerive2ndeMin/2]
+    for i in range(1,len(SignalDerive2nde)-2):
+        if (SignalDerive2nde[i]<SignalDerive2nde[i-1] and SignalDerive2nde[i]<SignalDerive2nde[i+1]):
+            indicesMin.append(i)
+    
+    indicesComplexes = [i for i in indicesMin if SignalDerive2nde[i]<SignalDerive2ndeMin*0.65]
         
     # Découpage des motifs
-    Motifs = [] # Format : 
+    Motifs = []
     
     for i in range(len(indicesComplexes)-1): # 4 complexes détectés donnent 3 motifs complets entre ces complexes
         Motifs.append([Temps[indicesComplexes[i]], Temps[indicesComplexes[i+1]]])
@@ -133,7 +133,7 @@ def detectionMotifs(iECG):
     
     print("[ECG n°"+str(iECG)+"]", len(indicesComplexes), "complexes identifiés, soit", len(Motifs), "motifs")
     
-    Enregistrements[iECG][2] = [conditionComplexe, indicesMax, indicesComplexes]
+    Enregistrements[iECG][2] = [conditionComplexe, indicesMax, indicesComplexes, indicesMin]
     Enregistrements[iECG][3] = Motifs
 
 
@@ -144,6 +144,7 @@ def detectionMotifs(iECG):
 from scipy import signal
 
 def lissage(iECG):
+    # Fonction qui permet de filtrer l'enregistrement choisi
     Signaux = Enregistrements[iECG][1]
     Signal = Signaux[0]
     PeriodeEchantillonnage = Enregistrements[iECG][0][3]
@@ -173,6 +174,7 @@ def tracerECG(iECG):
     Motifs = Enregistrements[iECG][3]
     Signal = Signaux[0]
     SignalFiltre = Signaux[1]
+    indicesMax, indicesMin = Enregistrements[iECG][2][1], Enregistrements[iECG][2][3]
     
     PeriodeEchantillonnage = Enregistrements[iECG][0][3]
     Temps = [n*PeriodeEchantillonnage for n in range(len(Signal))]
@@ -201,12 +203,19 @@ def tracerECG(iECG):
             if i%2==0:
                 plt.axvspan(motif[0], motif[1], facecolor='darkgrey', alpha=0.12)
             else:
-                plt.axvspan(motif[0], motif[1], facecolor='darkgrey', alpha=0.02)
+                plt.axvspan(motif[0], motif[1], facecolor='darkgrey', alpha=0.01)
             
-            plt.axvspan(motif[2][1], motif[2][2], facecolor='darkorange', alpha=0.2)
-            plt.axvspan(motif[3][1], motif[3][2], facecolor='darkorange', alpha=0.2)
+            plt.axvspan(motif[2][1], motif[2][2], facecolor='lightblue', alpha=0.2)
+            plt.axvspan(motif[3][1], motif[3][2], facecolor='lightblue', alpha=0.2)
             plt.axvline(x=Temps[motif[2][0]], color='orange', linestyle='-')
             plt.axvline(x=Temps[motif[3][0]], color='orange', linestyle='-')
+        
+#        TempsMax = [Temps[i] for i in indicesMax]
+#        TempsMin = [Temps[i] for i in indicesMin]
+#        for i in TempsMax:
+#            plt.axvline(x=i, color='red', linestyle='-')
+#        for i in TempsMin:
+#            plt.axvline(x=i, color='green', linestyle='-')
     
     elif estFiltré:
         plt.plot(Temps, Signal, color='silver', label="Signal (V)")
@@ -217,6 +226,8 @@ def tracerECG(iECG):
         plt.plot(Temps, Signal, color='red', label="Signal (V)")
     
     # plt.grid()
+    plt.ylabel("Signaux")
+    plt.xlabel("Temps (s)")
     plt.legend()
     
     # Centrage autour de y = 0
@@ -227,6 +238,29 @@ def tracerECG(iECG):
     figManager = plt.get_current_fig_manager()
     figManager.window.showMaximized()
     
+    plt.show()
+
+
+"""
+[Pertinence des paramètres]
+"""
+def pertinenceParametres(iECG):
+    Meta = Enregistrements[iECG][0]
+    Signaux = Enregistrements[iECG][1]
+    Signal = Signaux[0]
+    Motifs = Enregistrements[iECG][3]
+    PeriodeEchantillonnage = Meta[3]
+    Temps = [n*PeriodeEchantillonnage for n in range(len(Signal))]
+    
+    SegmentsTP = []
+    
+    for motif in Motifs:
+        SegmentsTP.append(Temps[motif[3][0]] - Temps[motif[2][0]])
+    
+    plt.ylabel("Longueur du segment TP")
+    plt.xlabel("Motifs")
+    plt.plot(range(len(SegmentsTP)),SegmentsTP)
+    plt.ylim([0,max(SegmentsTP)*1.1])
     plt.show()
 
 
@@ -295,11 +329,10 @@ def derivee(iECG, n=1, tracerDerivee=True):
         plt.plot(TempsDerive, SignalDerive, color='dodgerblue', label='Dérivée '+str(n)+['ère','nde','ème'][min([n-1,2])]+' du signal')
         plt.legend()
         
-        plt.axhline(y=min(SignalDerive)/2, color='green', linestyle='-')
+        plt.axhline(y=min(SignalDerive)*0.65, color='green', linestyle='-')
         
         plt.show()
         
-        #print("Min signal dérivé", TempsDerive[SignalDerive.index(min(SignalDerive))])
     else:
         return(SignalDerive)
 
