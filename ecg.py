@@ -174,7 +174,6 @@ def tracerECG(iECG):
     Motifs = Enregistrements[iECG][3]
     Signal = Signaux[0]
     SignalFiltre = Signaux[1]
-    indicesMax, indicesMin = Enregistrements[iECG][2][1], Enregistrements[iECG][2][3]
     
     PeriodeEchantillonnage = Enregistrements[iECG][0][3]
     Temps = [n*PeriodeEchantillonnage for n in range(len(Signal))]
@@ -194,6 +193,7 @@ def tracerECG(iECG):
     
     # Tracé de l'électrocardiogramme
     if estAnalysé:
+        indicesMax, indicesMin = ParametresAnalyse[1], ParametresAnalyse[3]
         conditionComplexe = ParametresAnalyse[0]
         plt.axhline(y=conditionComplexe, color='cornflowerblue', linestyle='-')
         plt.plot(Temps, Signal, color='silver', label="Signal (V)")
@@ -204,7 +204,11 @@ def tracerECG(iECG):
                 plt.axvspan(motif[0], motif[1], facecolor='darkgrey', alpha=0.12)
             else:
                 plt.axvspan(motif[0], motif[1], facecolor='darkgrey', alpha=0.01)
-            
+
+            # Complexes seuls
+#            plt.axvline(x=motif[0], color='royalblue', linestyle='-')
+#            plt.axvline(x=motif[1], color='royalblue', linestyle='-')
+
             plt.axvspan(motif[2][1], motif[2][2], facecolor='lightblue', alpha=0.2)
             plt.axvspan(motif[3][1], motif[3][2], facecolor='lightblue', alpha=0.2)
             plt.axvline(x=Temps[motif[2][0]], color='orange', linestyle='-')
@@ -244,22 +248,25 @@ def tracerECG(iECG):
 """
 [Pertinence des paramètres]
 """
-def pertinenceParametres(iECG):
-    Meta = Enregistrements[iECG][0]
-    Signaux = Enregistrements[iECG][1]
-    Signal = Signaux[0]
-    Motifs = Enregistrements[iECG][3]
-    PeriodeEchantillonnage = Meta[3]
-    Temps = [n*PeriodeEchantillonnage for n in range(len(Signal))]
+def pertinenceParametres(iECGs):
+    for iECG in iECGs:
+        Meta = Enregistrements[iECG][0]
+        Signaux = Enregistrements[iECG][1]
+        Signal = Signaux[0]
+        Motifs = Enregistrements[iECG][3]
+        PeriodeEchantillonnage = Meta[3]
+        Temps = [n*PeriodeEchantillonnage for n in range(len(Signal))]
+        
+        SegmentsTP = []
+        
+        for motif in Motifs:
+            SegmentsTP.append(Temps[motif[3][0]] - Temps[motif[2][0]])
     
-    SegmentsTP = []
-    
-    for motif in Motifs:
-        SegmentsTP.append(Temps[motif[3][0]] - Temps[motif[2][0]])
+        plt.plot(range(len(SegmentsTP)),SegmentsTP)
     
     plt.ylabel("Longueur du segment TP")
     plt.xlabel("Motifs")
-    plt.plot(range(len(SegmentsTP)),SegmentsTP)
+    plt.legend()
     plt.ylim([0,max(SegmentsTP)*1.1])
     plt.show()
 
@@ -354,14 +361,13 @@ def rythmeCardiaque(iECG):
 [Configuration du programme]
 """
 lireTXT("enregistrements/lycée/EX8.txt")
-for i in [1]:
+for i in range(1,311):
     lireTXT("enregistrements/ecg-id-database/"+str(i)+".txt")
 
-Lisser = [0]
-Analyser = [0]
+Lisser = range(0,311)
+Analyser = range(0,311)
 Afficher = [0]
 
 for iECG in Lisser: lissage(iECG)
 for iECG in Analyser: detectionMotifs(iECG)
 for iECG in Afficher: tracerECG(iECG)
-    
