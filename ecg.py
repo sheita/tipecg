@@ -220,13 +220,7 @@ def tracerECG(iECG):
             plt.axvspan(motif[3][1], motif[3][2], facecolor='orange', alpha=0.05)
             plt.axvline(x=Temps[motif[2][0]], color='orange', linestyle='-')
             plt.axvline(x=Temps[motif[3][0]], color='orange', linestyle='-')
-        
-#        TempsMax = [Temps[i] for i in indicesMax]
-#        TempsMin = [Temps[i] for i in indicesMin]
-#        for i in TempsMax:
-#            plt.axvline(x=i, color='red', linestyle='-')
-#        for i in TempsMin:
-#            plt.axvline(x=i, color='green', linestyle='-')
+            
     
     elif estFiltré:
         plt.plot(Temps, Signal, color='silver', label="Signal")
