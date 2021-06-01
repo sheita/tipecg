@@ -271,7 +271,7 @@ def tracerECG(iECG):
 def comparaisonParametres(iECGs, GrapheAnonyme=0, ParametresAnonymes=[], AfficherGraphes=True):
     # L'ECG anonyme ne sera pas utilisé pour construire les graphes de comparaison des paramètres 
     
-    # Chaque liste contiendra, pour chaque individu de la base de donnée, l'ensemble des mesures des segments pour chaque motif détectés
+    # Chaque liste contiendra, pour chaque individu de la base de donnée, l'ensemble des mesures des segments pour chaque motif détecté
     SegmentsTP = [[] for i in range(91)]
     SegmentsTQRS = [[] for i in range(91)]
     SegmentsQRSP = [[] for i in range(91)]
@@ -299,13 +299,9 @@ def comparaisonParametres(iECGs, GrapheAnonyme=0, ParametresAnonymes=[], Affiche
                 SegmentsQRSP[NumeroPersonne].append(segmentQRSP)
     
     # On liste les moyennes et les écarts-types de la longueur des segments pour l'ensemble des individus
-    MoyennesTP = []
-    MoyennesTQRS = []
-    MoyennesQRSP = []
+    MoyennesTP, MoyennesTQRS, MoyennesQRSP = [], [], []
     
-    EcartsTypesTP = []
-    EcartsTypesTQRS = []
-    EcartsTypesQRSP = []
+    EcartsTypesTP, EcartsTypesTQRS, EcartsTypesQRSP = [], [], []
     
     for i in range(len(SegmentsTP)):
         MoyennesTP.append(np.mean(SegmentsTP[i]))
